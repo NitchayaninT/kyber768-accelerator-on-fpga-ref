@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdint.h>
 #include "params.h"
 #include "poly.h"
@@ -236,6 +237,9 @@ void poly_getnoise_eta2(poly *r, const uint8_t seed[KYBER_SYMBYTES], uint8_t non
 void poly_ntt(poly *r)
 {
   ntt(r->coeffs);
+  for(int i =0; i < 256; i++){
+    printf("%04x\n", (uint16_t)r->coeffs[i]);
+  }
   poly_reduce(r);
 }
 
