@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <stdint.h>
 #include "params.h"
 #include "poly.h"
@@ -234,13 +233,50 @@ void poly_getnoise_eta2(poly *r, const uint8_t seed[KYBER_SYMBYTES], uint8_t non
 *
 * Arguments:   - uint16_t *r: pointer to in/output polynomial
 **************************************************/
+// add print before can verify the ntt module
+#include <stdio.h>
+#include <inttypes.h>
+
+static inline int16_t mod_q(int32_t x)
+{
+    x %= 3329;
+    if (x < 0) x += 3329;
+    return (int16_t)x;
+}
 void poly_ntt(poly *r)
 {
   ntt(r->coeffs);
-  for(int i =0; i < 256; i++){
-    printf("%04x\n", (uint16_t)r->coeffs[i]);
+  FILE *fp;
+  int16_t rtl_result[256];
+
+  fp = fopen("/home/pakin/workspace/kyber/vivado/kyber.sim/sim_1/behav/xsim/ntt_out.txt", "r");
+  if (!fp) {
+      perror("fopen");
+      return;
   }
+
+  for (int i = 0; i < 256; i++) {
+      if (fscanf(fp, "%hd", &rtl_result[i]) != 1) {
+          printf("Read error at index %d\n", i);
+          break;
+      }
+  }
+
+  fclose(fp);
+  for (int i = 0; i < 256; i++) {
+      int16_t c   = mod_q(r->coeffs[i]);
+      int16_t rtl = mod_q(rtl_result[i]);
+
+      printf("%3d: C=%6d RTL=%6d\n",i, c ,rtl);
+      if (c != rtl) {
+          printf("MISMATCH %3d : C=%6d RTL=%6d diff=%6d\n",
+                 i, c, rtl, c - rtl);
+      }
+  }
+  for(int i=0; i<256; i++)
+    printf("%d : %" PRId16"\n", i, (int16_t)r->coeffs[i]);
   poly_reduce(r);
+
 }
 
 /*************************************************

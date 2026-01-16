@@ -80,6 +80,30 @@ static int16_t fqmul(int16_t a, int16_t b)
   return montgomery_reduce((int32_t)a * b);
 }
 
+
+void test_fqmul(void)
+{
+  int16_t a = 23, b = 17;
+  int16_t r;
+
+  r = fqmul(a, b);                 // Montgomery domain
+  printf("a:%02d b:%02d\n", a, b);
+  printf("Montgomery: %d\n", r);
+  printf("Normal: %d\n", montgomery_reduce(r));
+
+  a = -1044; b = 128;
+  r = fqmul(a,b);
+  printf("a:%02d b:%02d\n", a, b);
+  printf("Montgomery: %d\n", r);
+  printf("Normal: %d\n", montgomery_reduce(r));
+}
+void test_clt(void){
+  int16_t a = 1, b = 129, zeta = -758;
+  int16_t r = fqmul(zeta, b);
+  printf("r = %"PRId16"\n", r);
+  printf("out0 = %"PRId16", out1 = %"PRId16"\n", a+r, a-r);
+}
+
 int print_poly(poly *test)
 {
   for (int i = 0; i < 256; i++) {
@@ -88,34 +112,18 @@ int print_poly(poly *test)
   return 0;
 }
 
-void test_fqmul(void)
-{
-  int16_t a = 23, b = 17;
-  int16_t r;
-
-  r = fqmul(a, b);                 // Montgomery domain
-  printf("Montgomery: %d\n", r);
-
-  printf("Normal: %d\n", montgomery_reduce(r));
-}
-
 int test_ntt(poly test)
 {
-  for (int i = 0; i < 256; i++) {
+  for (int16_t i = 0; i < 256; i++) {
     test.coeffs[i] = i;
   }
 
-  poly_tomont(&test);
   poly_ntt(&test);
-  print_poly(&test);
-
+  //print_poly(&test);
   return 0;
 }*/
 
-int main(void)
-{
-  poly test;
-  // test_ntt(test);
+void test_hash(poly *test){
   const char *seed_stream = "b17a22ce5d458ba33d6931d893324e04123b1590846653d49d019a59da9ddd1aad293fc43863b0f63c093b2e9325249a0e45cf390f8ea91fdf9450a90c34babde106958e80184c9dfcf78da5f66fd7f65feef73aced58d4d995606c2ab56d11141ec5e47c6c8baaa5fcc346f9ea76c58389af2cf4df93f38c70f542cbae644577d22fd10d46f4f5c70d72c99775bc9ed7e0c417b6af0e9e545603f42df15d09481539cfef0bdb84b3899339793c2759f4c6d3b73f07f5a2ef7927f39a6ca2b45102a5b2794449c99b04617b2bee4777e043007a9e07eb858f4a49fdb5380e1de3b739c795715f4fc11223f37896d5fce01f63ce25780c462a6f9379a8d112d026133e5b6b6df3795cc374c51785f435d2bcf64e4f6be21e38f7d8c1c447b2e73b9ca12d58a71efbc7d4cae4cb99541d8f5662dc2ad1b4083c449461b60e7ca6bd395bc878cd37eff6ebca7ec10ee6ffbe1f719eec9ebbfd31e60b174c4e4a2940d14ce9343b3c10d9ddd42d92d04c19c1ae1901cb4095fa4e00ee14949ad2f513257e1bc6295e8a0eda314c3ac3b67a0d62a4397efedd96eed0ecba9cc195276800fa0bd99a52dcdbe8d959276e5ace0fb215f3a7b01d781ef77287786653a6e7a15c187709b16854e142910976b0987ac13fd54981c47af0635eb286caeadd9c25c425088160c7965659c1e659c9a5942b330dd5f045ddf6689eac9ea06a1bd59b27768331e8b8d74f8b5c661789989160286a71e740bcd0718d5e8b84a05bdb9aa0964512c452e2feec81ad94069ce5430a05d5b806d311a9a913492a419012859b1884f94698c62a85ac0d7cf91e370d3a14a0d75d1ee3177b29cdf4aac5463b73d722603fcd1c946b71f4d60b1d0619be63b2c10464e8eed2db46d0fa6ba16beaa63a2f5f9ff6ccbe3e70953c633e81da07d3389ef6becfcfdba740b56bc";
   const char *coin_stream ="99abf40515a7387aa7a41f83840467aaba58818583cae85ec7710efbeb5dce0a5e91f3fa854b8570aaa4393e663ef90458d0d9823e682c1062947b54c496ef8a9bb38198777295bb264c790628226b8a3a3ce2172d0d0c5534d8dc67d0c1155c4a98b3559c84fa82d90e4cfc474b2fda6b38ca4f0ef964bd4efd4b5cd5be6696";
   //uint8_t buf[672]; // buffer of bytes
@@ -139,12 +147,18 @@ int main(void)
   }
 
   // 2*(256/4) = 128 bytes per poly
-  cbd_eta2(&test, buf);
+  cbd_eta2(test, buf);
   printf("Generated Noise bytes\n");
-
-  for (int i = 0; i < 256; i++)
-    printf("%d ", test.coeffs[i]);
+}
+int main(void)
+{
+  poly test;
 
   //test_fqmul();
+  //test_ntt(test);
+  test_hash(&test);
+
+  //test_fqmul();
+  //test_clt();
   return 0;
 }
