@@ -372,11 +372,18 @@ static void keccak_absorb(uint64_t s[25],
   for(i=0;i<25;i++)
     s[i] = 0;
 
+    // r =
   while(mlen >= r) {
     for(i=0;i<r/8;i++)
       s[i] ^= load64(m + 8*i);
+  }
+  printf("state_out =");
+  for(int i = 0; i < 25;i++){
+    printf("%h", s[i]);
+  }
+  printf("\n");
 
-    KeccakF1600_StatePermute(s);
+    /*KeccakF1600_StatePermute(s);
     mlen -= r;
     m += r;
   }
@@ -386,7 +393,7 @@ static void keccak_absorb(uint64_t s[25],
   t[i] = p;
   t[r-1] |= 128;
   for(i=0;i<r/8;i++)
-    s[i] ^= load64(t + 8*i);
+    s[i] ^= load64(t + 8*i);*/
 }
 
 /*************************************************
