@@ -243,6 +243,7 @@ static inline int16_t mod_q(int32_t x)
     if (x < 0) x += 3329;
     return (int16_t)x;
 }
+
 void poly_ntt(poly *r)
 {
   ntt(r->coeffs);
@@ -273,8 +274,10 @@ void poly_ntt(poly *r)
                  i, c, rtl, c - rtl);
       }
   }
+  /*
   for(int i=0; i<256; i++)
     printf("%d : %" PRId16"\n", i, (int16_t)r->coeffs[i]);
+  */
   poly_reduce(r);
 
 }

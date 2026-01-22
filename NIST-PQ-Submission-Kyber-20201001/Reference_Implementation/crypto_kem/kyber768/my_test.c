@@ -7,6 +7,7 @@
 #define MONT 2285 // 2^16 mod q
 #define QINV 62209 // q^-1 mod 2^16
 
+/*
 unsigned int rej_uniform(int16_t *r, unsigned int len, const uint8_t *buf, unsigned int buflen)
 {
   unsigned int ctr, pos;
@@ -62,6 +63,7 @@ void cbd_eta2(poly *r, const uint8_t buf[KYBER_ETA1*KYBER_N/4])
   cbd2(r, buf);
 #endif
 }
+*/
 
 int16_t montgomery_reduce(int32_t a)
 {
@@ -150,15 +152,26 @@ void test_hash(poly *test){
   cbd_eta2(test, buf);
   printf("Generated Noise bytes\n");
 }
+
+static uint64_t load64(const uint8_t x[8]) {
+  unsigned int i;
+  uint64_t r = 0;
+
+  for(i=0;i<8;i++)
+    r |= (uint64_t)x[i] << 8*i;
+
+  return r;
+}
 int main(void)
 {
-  poly test;
+  //poly test;
 
   //test_fqmul();
   //test_ntt(test);
-  test_hash(&test);
+  //test_hash(&test);
 
   //test_fqmul();
   //test_clt();
+
   return 0;
 }

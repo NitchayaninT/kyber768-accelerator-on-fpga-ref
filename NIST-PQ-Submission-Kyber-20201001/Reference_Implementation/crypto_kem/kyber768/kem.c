@@ -54,14 +54,15 @@ int crypto_kem_enc(unsigned char *ct,
   uint8_t buf[2*KYBER_SYMBYTES];
   /* Will contain key, coins */
   uint8_t kr[2*KYBER_SYMBYTES];
-
+  
+  // ########## Pre_cncypt
   randombytes(buf, KYBER_SYMBYTES);
   /* Don't release system RNG output */
-  hash_h(buf, buf, KYBER_SYMBYTES);
+  hash_h(buf, buf, KYBER_SYMBYTES); // msg
 
   /* Multitarget countermeasure for coins + contributory KEM */
-  hash_h(buf+KYBER_SYMBYTES, pk, KYBER_PUBLICKEYBYTES);
-  hash_g(kr, buf, 2*KYBER_SYMBYTES);
+  hash_h(buf+KYBER_SYMBYTES, pk, KYBER_PUBLICKEYBYTES); //coin
+  hash_g(kr, buf, 2*KYBER_SYMBYTES); //pre-k
 
   /* coins are in kr+KYBER_SYMBYTES */
   indcpa_enc(ct, buf, pk, kr+KYBER_SYMBYTES);
