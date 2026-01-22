@@ -13,6 +13,7 @@
 //#define shake128_absorb FIPS202_NAMESPACE(_shake128_absorb)
 //void shake128_absorb(keccak_state *state, const uint8_t *in, size_t inlen);
 
+/*
 unsigned int rej_uniform(int16_t *r, unsigned int len, const uint8_t *buf, unsigned int buflen)
 {
   unsigned int ctr, pos;
@@ -297,8 +298,10 @@ int main(void)
   //test_fqmul();
   //test_ntt(test);
   //test_hash(&test);
+  //test_hash(&test);
 
   //test_fqmul();
   //test_clt();
+
   return 0;
 }

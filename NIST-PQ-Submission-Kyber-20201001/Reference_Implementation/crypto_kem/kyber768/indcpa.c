@@ -279,6 +279,7 @@ void indcpa_enc(uint8_t c[KYBER_INDCPA_BYTES],
   polyvec sp, pkpv, ep, at[KYBER_K], bp;
   poly v, k, epp;
 
+  //####### Pre_enc ###########
   unpack_pk(&pkpv, seed, pk);
   poly_frommsg(&k, m);
   gen_at(at, seed);
@@ -288,6 +289,7 @@ void indcpa_enc(uint8_t c[KYBER_INDCPA_BYTES],
   for(i=0;i<KYBER_K;i++)
     poly_getnoise_eta2(ep.vec+i, coins, nonce++);
   poly_getnoise_eta2(&epp, coins, nonce++);
+  //##################
 
   polyvec_ntt(&sp);
 
