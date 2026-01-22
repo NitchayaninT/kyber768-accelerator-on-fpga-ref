@@ -1,5 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
+#include <inttypes.h>
 #include "params.h"
 #include "indcpa.h"
 #include "poly.h"
@@ -8,6 +10,28 @@
 #include "ntt.h"
 #include "symmetric.h"
 
+
+static void print_poly(const char *label, const poly *p)
+{
+  printf("%s\n", label);
+  for (int t = 0; t < KYBER_N; t++) {
+    printf("%d", p->coeffs[t]);
+    if ((t & 15) == 15) printf("\n");
+    else printf(" ");
+  }
+  if ((KYBER_N & 15) != 0) printf("\n");
+}
+
+static void print_hex(const char *label, const uint8_t *buf, unsigned int len)
+{
+  printf("%s (len=%u):\n", label, len);
+  for (unsigned int i = 0; i < len; i++) {
+    printf("%02x", buf[i]);
+    if ((i & 15) == 15) printf("\n");
+    else printf(" ");
+  }
+  if ((len & 15) != 0) printf("\n");
+}
 /*************************************************
 * Name:        pack_pk
 *
@@ -180,9 +204,13 @@ void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
   unsigned int buflen, off;
   uint8_t buf[GEN_MATRIX_NBLOCKS*XOF_BLOCKBYTES+2];
   xof_state state;
-
+  int count =0;
   for(i=0;i<KYBER_K;i++) {
     for(j=0;j<KYBER_K;j++) {
+         // reset per (i,j)
+      uint8_t fullbuf[4096];
+      unsigned int full_len = 0;
+
       if(transposed)
         xof_absorb(&state, seed, i, j);
       else
@@ -190,6 +218,10 @@ void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
 
       xof_squeezeblocks(buf, GEN_MATRIX_NBLOCKS, &state);
       buflen = GEN_MATRIX_NBLOCKS*XOF_BLOCKBYTES;
+      
+      memcpy(fullbuf + full_len, buf, buflen);
+      full_len += buflen;
+
       ctr = rej_uniform(a[i].vec[j].coeffs, KYBER_N, buf, buflen);
 
       while(ctr < KYBER_N) {
@@ -197,9 +229,22 @@ void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
         for(k = 0; k < off; k++)
           buf[k] = buf[buflen - off + k];
         xof_squeezeblocks(buf + off, 1, &state);
+        
+        
+        memcpy(fullbuf + full_len, buf + off, XOF_BLOCKBYTES);
+        full_len += XOF_BLOCKBYTES;
+
         buflen = off + XOF_BLOCKBYTES;
         ctr += rej_uniform(a[i].vec[j].coeffs + ctr, KYBER_N - ctr, buf, buflen);
       }
+        // ✅ print after finished squeezing for this (i,j)
+      printf("\n=== FINAL SHAKE STREAM USED (i=%u, j=%u, transposed=%d) ===\n", i, j, transposed);
+      print_hex("fullbuf", fullbuf, full_len);
+      
+      char tag[64];
+      snprintf(tag, sizeof(tag), "Poly a[%u][%u] (i=%u,j=%u):", i, j, i, j);
+      print_poly(tag, &a[i].vec[j]);
+
     }
   }
 }

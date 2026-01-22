@@ -1,4 +1,4 @@
-CC=/usr/bin/gcc
+CC=C:\msys64\ucrt64\bin\gcc.exe
 CFLAGS += -O3 -march=native -fomit-frame-pointer
 LDFLAGS=-lcrypto
 

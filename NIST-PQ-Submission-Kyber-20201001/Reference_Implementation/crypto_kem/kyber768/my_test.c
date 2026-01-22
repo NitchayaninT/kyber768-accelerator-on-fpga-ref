@@ -8,12 +8,13 @@
 #include "symmetric.h"
 #include "indcpa.h"
 
+
 #define MONT 2285 // 2^16 mod q
 #define QINV 62209 // q^-1 mod 2^16
 //#define shake128_absorb FIPS202_NAMESPACE(_shake128_absorb)
 //void shake128_absorb(keccak_state *state, const uint8_t *in, size_t inlen);
 
-/*
+
 unsigned int rej_uniform(int16_t *r, unsigned int len, const uint8_t *buf, unsigned int buflen)
 {
   unsigned int ctr, pos;
@@ -82,41 +83,6 @@ void cbd_eta2(poly *r, const uint8_t buf[KYBER_ETA1*KYBER_N/4])
 *              - int transposed:      boolean deciding whether A or A^T
 *                                     is generated
 **************************************************/
-#define gen_a(A,B)  gen_matrix(A,B,0)
-#define gen_at(A,B) gen_matrix(A,B,1)
-
-#define GEN_MATRIX_NBLOCKS ((12*KYBER_N/8*(1 << 12)/KYBER_Q \
-                             + XOF_BLOCKBYTES)/XOF_BLOCKBYTES)
-// Not static for benchmarking
-void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
-{
-  unsigned int ctr, i, j, k;
-  unsigned int buflen, off;
-  uint8_t buf[GEN_MATRIX_NBLOCKS*XOF_BLOCKBYTES+2];
-  xof_state state;
-
-  for(i=0;i<KYBER_K;i++) {
-    for(j=0;j<KYBER_K;j++) {
-      if(transposed)
-        xof_absorb(&state, seed, i, j);
-      else
-        xof_absorb(&state, seed, j, i);
-
-      xof_squeezeblocks(buf, GEN_MATRIX_NBLOCKS, &state);
-      buflen = GEN_MATRIX_NBLOCKS*XOF_BLOCKBYTES;
-      ctr = rej_uniform(a[i].vec[j].coeffs, KYBER_N, buf, buflen);
-
-      while(ctr < KYBER_N) {
-        off = buflen % 3;
-        for(k = 0; k < off; k++)
-          buf[k] = buf[buflen - off + k];
-        xof_squeezeblocks(buf + off, 1, &state);
-        buflen = off + XOF_BLOCKBYTES;
-        ctr += rej_uniform(a[i].vec[j].coeffs + ctr, KYBER_N - ctr, buf, buflen);
-      }
-    }
-  }
-}
 /*int16_t montgomery_reduce(int32_t a)
 {
   int32_t t;
@@ -178,10 +144,12 @@ int test_ntt(poly test)
 }*/
 void test_matrix_gen(){
   polyvec a[KYBER_K];
-  const char *seed = "hf8f11229044dfea54ddc214aaa439e7ea06b9b4ede8a3e3f6dfef500c9665598";
-  gen_matrix(a, seed, 1);
+  uint8_t m[32] = {248, 241, 18, 41, 4, 77, 254, 165, 77, 220, 33, 74, 170, 67, 158, 126, 160, 107, 155, 78, 222, 138, 62, 63, 109, 254, 245, 0, 201, 102, 85, 152};
+//  const char *seed = "f8f11229044dfea54ddc214aaa439e7ea06b9b4ede8a3e3f6dfef500c9665598";
+  gen_matrix(a, m, 1);
 
   // print 3x3 polys (Kyber768)
+  /*
   for (int i = 0; i < KYBER_K; i++) {
     for (int j = 0; j < KYBER_K; j++) {
       printf("=== A^T[%d][%d] ===\n", i, j);
@@ -189,8 +157,8 @@ void test_matrix_gen(){
         printf("%d ", a[i].vec[j].coeffs[k]);
       }
       printf("\n");
-    }
-  }
+    } 
+  }*/
 }
 
 void test_hash(poly *test){
@@ -206,7 +174,8 @@ void test_hash(poly *test){
   for (int i = 0; i < 672; i++) printf("%02x", buf[i]);
   printf("\n");
 
-  int n = rej_uniform(coeffs, 256, buf, 672);
+  uint8_t buf_py[672] = {219, 230, 89, 54, 250, 193, 105, 189, 93, 120, 136, 225, 1, 44, 169, 223, 144, 203, 51, 146, 202, 52, 0, 14, 95, 186, 173, 76, 149, 208, 111, 39, 102, 73, 82, 228, 136, 25, 61, 49, 55, 34, 202, 56, 89, 19, 55, 152, 159, 80, 45, 145, 136, 250, 175, 185, 185, 71, 43, 109, 92, 133, 148, 138, 187, 117, 44, 114, 72, 63, 84, 162, 189, 128, 55, 135, 64, 5, 45, 220, 209, 14, 85, 185, 73, 159, 14, 193, 174, 36, 135, 182, 147, 31, 190, 253, 41, 149, 58, 126, 170, 13, 54, 166, 20, 129, 45, 187, 132, 102, 3, 106, 8, 102, 185, 140, 39, 64, 184, 100, 200, 166, 121, 240, 81, 89, 156, 134, 103, 178, 48, 189, 133, 204, 189, 41, 78, 127, 61, 124, 46, 223, 201, 83, 45, 71, 121, 31, 119, 224, 175, 244, 66, 93, 168, 25, 155, 72, 235, 158, 58, 68, 180, 13, 36, 206, 33, 241, 157, 151, 71, 170, 65, 195, 202, 154, 15, 64, 180, 168, 199, 158, 27, 218, 248, 111, 181, 44, 194, 38, 55, 63, 165, 35, 186, 178, 175, 30, 70, 229, 253, 4, 111, 77, 253, 5, 19, 125, 93, 222, 124, 27, 203, 88, 78, 113, 126, 147, 208, 62, 143, 157, 26, 74, 139, 245, 129, 247, 69, 93, 68, 244, 220, 13, 142, 37, 145, 62, 130, 196, 23, 239, 41, 191, 45, 38, 205, 218, 194, 201, 173, 183, 78, 254, 238, 228, 230, 211, 241, 63, 170, 161, 46, 67, 2, 88, 229, 199, 163, 124, 55, 88, 77, 182, 250, 182, 0, 143, 136, 50, 0, 59, 21, 208, 165, 175, 24, 220, 199, 102, 73, 107, 146, 34, 66, 1, 42, 138, 42, 76, 5, 17, 172, 113, 71, 102, 41, 252, 157, 88, 113, 147, 146, 120, 128, 59, 223, 158, 192, 73, 231, 95, 131, 218, 73, 86, 252, 78, 124, 155, 98, 48, 126, 111, 253, 241, 167, 51, 135, 174, 105, 202, 38, 126, 140, 217, 132, 68, 115, 191, 194, 76, 230, 176, 138, 185, 68, 125, 202, 20, 166, 42, 3, 37, 20, 183, 26, 61, 105, 243, 229, 50, 21, 44, 104, 208, 33, 128, 193, 112, 202, 153, 149, 26, 116, 138, 23, 89, 32, 17, 217, 70, 219, 227, 224, 209, 77, 142, 64, 5, 233, 12, 25, 24, 159, 242, 130, 106, 148, 160, 103, 172, 2, 26, 199, 109, 177, 105, 158, 226, 182, 221, 218, 8, 63, 69, 226, 158, 45, 83, 126, 69, 0, 3, 37, 54, 102, 141, 89, 23, 251, 28, 79, 232, 167, 63, 49, 121, 154, 61, 248, 177, 48, 211, 104, 81, 59, 58, 24, 162, 79, 102, 35, 32, 115, 55, 36, 155, 19, 120, 81, 214, 118, 36, 196, 88, 206, 108, 239, 26, 99, 37, 126, 61, 146, 203, 97, 204, 225, 15, 158, 151, 144, 73, 166, 217, 179, 25, 79, 202, 162, 245, 116, 59, 151, 106, 157, 231, 180, 220, 246, 21, 104, 230, 57, 207, 97, 223, 134, 123, 163, 145, 214, 242, 123, 202, 68, 245, 173, 172, 7, 224, 158, 8, 140, 218, 99, 248, 165, 33, 68, 80, 206, 49, 62, 53, 12, 16, 166, 93, 52, 151, 80, 65, 167, 63, 120, 200, 150, 140, 110, 117, 160, 137, 90, 220, 80, 99, 89, 9, 92, 205, 185, 54, 203, 191, 36, 38, 251, 83, 253, 197, 52, 20, 205, 222, 184, 214, 169, 93, 232, 169, 222, 189, 134, 52, 235, 235, 134, 28, 160, 211, 85, 31, 238, 245, 244, 179, 145, 84, 172, 185, 12, 105, 126, 193, 210, 81, 1, 149, 15, 172, 6, 35, 165, 63, 239, 134, 71, 206, 72, 91, 7, 160, 130, 233, 194, 215, 221, 89, 139, 5, 57, 132, 178, 25, 22, 238, 102, 161, 83, 82, 143, 182, 49, 37, 85, 65, 249, 180, 229, 174, 143, 232, 55, 167, 6, 194, 206, 213, 6, 121};
+  int n = rej_uniform(coeffs, 256, buf_py, 672);
 
     printf("Generated %u coeffs\n", n);
       for (int i = 0; i < 256; i++)
@@ -267,34 +236,19 @@ static uint64_t load64(const uint8_t x[8]) {
   for(i=0;i<r/8;i++)
     s[i] ^= load64(t + 8*i); 
 }*/
-void kyber_shake128_absorb(keccak_state *state,
-                           const uint8_t seed[KYBER_SYMBYTES],
-                           uint8_t x,
-                           uint8_t y)
-{
-  unsigned int i;
-  uint8_t extseed[KYBER_SYMBYTES+2];
 
-  for(i=0;i<KYBER_SYMBYTES;i++)
-    extseed[i] = seed[i];
-  extseed[i++] = x;
-  extseed[i]   = y;
-
-  shake128_absorb(state, extseed, sizeof(extseed));
-}
-
-void test_keccak_absorb(){
+/*void test_keccak_absorb(){
   keccak_state state;
   int8_t m = "f8f11229044dfea54ddc214aaa439e7ea06b9b4ede8a3e3f6dfef500c9665598";
   unsigned int r = 168;
   kyber_shake128_absorb(&state,m,0,0);
   //f8f11229044dfea54ddc214aaa439e7ea06b9b4ede8a3e3f6dfef500c9665598
-}
+}*/
 int main(void)
 {
-  test_keccak_absorb();
+  //test_keccak_absorb();
   //poly test;
-  //test_matrix_gen();
+  test_matrix_gen();
   //test_fqmul();
   //test_ntt(test);
   //test_hash(&test);

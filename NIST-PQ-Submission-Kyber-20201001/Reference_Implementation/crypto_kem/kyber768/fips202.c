@@ -4,7 +4,7 @@
  * and the public domain "TweetFips202" implementation
  * from https://twitter.com/tweetfips202
  * by Gilles Van Assche, Daniel J. Bernstein, and Peter Schwabe */
-
+#include <stdio.h>
 #include <stddef.h>
 #include <stdint.h>
 #include "fips202.h"
@@ -376,14 +376,8 @@ static void keccak_absorb(uint64_t s[25],
   while(mlen >= r) {
     for(i=0;i<r/8;i++)
       s[i] ^= load64(m + 8*i);
-  }
-  printf("state_out =");
-  for(int i = 0; i < 25;i++){
-    printf("%h", s[i]);
-  }
-  printf("\n");
 
-    /*KeccakF1600_StatePermute(s);
+    KeccakF1600_StatePermute(s);
     mlen -= r;
     m += r;
   }
@@ -393,7 +387,7 @@ static void keccak_absorb(uint64_t s[25],
   t[i] = p;
   t[r-1] |= 128;
   for(i=0;i<r/8;i++)
-    s[i] ^= load64(t + 8*i);*/
+    s[i] ^= load64(t + 8*i);
 }
 
 /*************************************************
