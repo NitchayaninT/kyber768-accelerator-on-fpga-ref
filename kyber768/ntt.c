@@ -89,9 +89,11 @@ static int16_t fqmul(int16_t a, int16_t b) {
  * Arguments:   - int16_t r[256]: pointer to input/output vector of elements
  *                                of Zq
  **************************************************/
+#include <stdio.h>
 void ntt(int16_t r[256]) {
   unsigned int len, start, j, k;
   int16_t t, zeta;
+  int16_t a, b;
 
   k = 1;
   for (len = 128; len >= 2; len >>= 1) {
@@ -99,8 +101,17 @@ void ntt(int16_t r[256]) {
       zeta = zetas[k++];
       for (j = start; j < start + len; ++j) {
         t = fqmul(zeta, r[j + len]);
+        a = r[j];
+        b = r[j + len];
         r[j + len] = r[j] - t;
         r[j] = r[j] + t;
+
+        if (len == 2) {
+          printf("index: %d, a = %d, index: %d, b = %d, zeta = %d\n out0 = %d, "
+                 "out1 = %d\n",
+                 j, a, j + len, b, zeta, r[j], r[j + len]);
+        }
+        // printf("j=%d, fqmul_result = %d\n", j, t);
       }
     }
   }

@@ -1,4 +1,5 @@
 #include "test_ntt.h"
+#include <stdint.h>
 /*int16_t montgomery_reduce(int32_t a)
 {
   int32_t t;
@@ -11,50 +12,54 @@
   return t;
 }
 */
-static int16_t fqmul(int16_t a, int16_t b)
-{
+static int16_t fqmul(int16_t a, int16_t b) {
   return montgomery_reduce((int32_t)a * b);
 }
 
-void test_fqmul(void)
-{
-  int16_t a = 23, b = 17;
+void test_fqmul(void) {
+  int16_t a = 746, b = 1818;
   int16_t r;
 
+  r = fqmul(a, b); // Montgomery domain
+  printf("a:%02d b:%02d\n", a, b);
+  printf("Montgomery: %d\n", r);
+  printf("Normal: %d\n", montgomery_reduce(r));
+
+  /*
+  a = 17417; b = -14255;
   r = fqmul(a, b);                 // Montgomery domain
   printf("a:%02d b:%02d\n", a, b);
   printf("Montgomery: %d\n", r);
   printf("Normal: %d\n", montgomery_reduce(r));
-
-  a = -1044; b = 128;
-  r = fqmul(a,b);
-  printf("a:%02d b:%02d\n", a, b);
-  printf("Montgomery: %d\n", r);
-  printf("Normal: %d\n", montgomery_reduce(r));
+  */
 }
-void test_clt(void){
-  int16_t a = 1, b = 129, zeta = -758;
+
+void test_clt(void) {
+  int16_t a = 4505, b = 556;
+  int16_t zeta = 2226;
   int16_t r = fqmul(zeta, b);
-  printf("r = %"PRId16"\n", r);
-  printf("out0 = %"PRId16", out1 = %"PRId16"\n", a+r, a-r);
+  printf("r = %" PRId16 "\n", r);
+  printf("out0 = %" PRId16 ", out1 = %" PRId16 "\n", mod_q(a + r),
+         mod_q(a - r));
 }
 
-int print_poly(poly *test)
-{
-  for (int i = 0; i < 256; i++) {
-    printf("0x%04x\n", (uint16_t)test->coeffs[i]);
-  }
-  return 0;
+// TODO now the compute step give correct output, next check safe
+void test_ntt() {
+  poly *r = malloc(sizeof(poly));
+  poly *r_verilog = malloc(sizeof(poly));
+
+  char path[256];
+  get_test_result_path(path, "ntt.hex");
+  read_ram_out(r_verilog, path);
+
+  get_testcase_path(path, "ntt.mem");
+  read_ram_in(r, path);
+  //print_poly(r); same poly is loaded (verified)
+
+  ntt(r->coeffs);
+
+  compare_poly(r, r_verilog);
+
+  free(r);
+  free(r_verilog);
 }
-
-int test_ntt(poly test)
-{
-  for (int16_t i = 0; i < 256; i++) {
-    test.coeffs[i] = i;
-  }
-
-  poly_ntt(&test);
-  //print_poly(&test);
-  return 0;
-}
-

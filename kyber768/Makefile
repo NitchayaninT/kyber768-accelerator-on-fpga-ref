@@ -3,8 +3,8 @@ CC=/usr/bin/gcc
 CFLAGS += -O3 -march=native -fomit-frame-pointer
 LDFLAGS=-lcrypto
 
-SOURCES= cbd.c fips202.c indcpa.c kem.c ntt.c poly.c polyvec.c reduce.c rng.c verify.c symmetric-shake.c my_test.c test_ntt.c test_hash.c
-HEADERS= api.h cbd.h fips202.h indcpa.h ntt.h params.h poly.h polyvec.h reduce.h rng.h verify.h symmetric.h test_ntt.h test_hash.h
+SOURCES= cbd.c fips202.c indcpa.c kem.c ntt.c poly.c polyvec.c reduce.c rng.c verify.c symmetric-shake.c my_test.c test_ntt.c test_hash.c test_mul.c test_utils.c
+HEADERS= api.h cbd.h fips202.h indcpa.h ntt.h params.h poly.h polyvec.h reduce.h rng.h verify.h symmetric.h test_ntt.h test_hash.h test_mul.h test_utils.h
 
 my_test: $(HEADERS) $(SOURCES)
 	$(CC) $(CFLAGS) -o $@ $(SOURCES) $(LDFLAGS)
