@@ -8,19 +8,23 @@ void test_polyvec_basemul() {
 
   // get the value of polyvec a and b from files;
   char path[256];
-  get_testcase_path(path, "pvbm_a0.mem");
-  read_ram_in(&a->vec[0], path);
-  get_testcase_path(path, "pvbm_a1.mem");
-  read_ram_in(&a->vec[1], path);
-  get_testcase_path(path, "pvbm_a2.mem");
-  read_ram_in(&a->vec[2], path);
+  char input_name[256];
+  for (int i = 0; i < 3; i++) {
 
-  get_testcase_path(path, "pvbm_b0.mem");
-  read_ram_in(&b->vec[0], path);
-  get_testcase_path(path, "pvbm_b1.mem");
-  read_ram_in(&b->vec[1], path);
-  get_testcase_path(path, "pvbm_b2.mem");
-  read_ram_in(&b->vec[2], path);
+    sprintf(input_name, "main_compute/tvec%d.mem", i);
+    get_testcase_path(path, input_name);
+    if (read_ram_16bits(&a->vec[i], path) == -1) {
+      return;
+    }
+  }
+
+  for (int i = 0; i < 3; i++) {
+    sprintf(input_name, "main_compute/r%d.mem", i);
+    get_testcase_path(path, input_name);
+    if (read_ram_16bits(&b->vec[i], path) == -1) {
+      return;
+    }
+  }
 
   polyvec_pointwise_acc_montgomery(r, a, b);
 
@@ -92,8 +96,6 @@ void test_poly_basemul() {
   free(r);
   free(r_verilog);
 }
-
-
 
 void test_barrett() {
   int16_t a = (int16_t)-9645;

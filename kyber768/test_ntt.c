@@ -1,5 +1,64 @@
 #include "test_ntt.h"
+#include "reduce.h"
 #include <stdint.h>
+
+void test_ntt() {
+  poly *r = malloc(sizeof(poly));
+  poly *r_verilog = malloc(sizeof(poly));
+
+  char path[256];
+  get_test_result_path(path, "ntt.hex");
+
+  if (read_ram_out(r_verilog, path) == -1) {
+    printf("Error Files not found\n");
+    return;
+  };
+
+  get_testcase_path(path, "main_compute/r1_32bits.mem");
+  // get_testcase_path(path, "ntt.mem");
+  if (read_ram_in(r, path) == -1) {
+    printf("Error Files not found\n");
+    return;
+  }
+  // print_poly(r); same poly is loaded (verified)
+
+  // ntt(r->coeffs); // this is wrong since poly_ntt also apply barrett reduce
+  poly_ntt(r);
+
+  compare_poly(r, r_verilog);
+
+  free(r);
+  free(r_verilog);
+}
+
+void test_inv_ntt() {
+  poly *r = malloc(sizeof(poly));
+  poly *r_verilog = malloc(sizeof(poly));
+
+  char path[256];
+  get_test_result_path(path, "inv_ntt.hex");
+
+  if (read_ram_out(r_verilog, path) == -1) {
+    printf("Error Files not found\n");
+    return;
+  };
+
+  get_test_result_path(path, "main_compute/pvbm_at0_32bits.hex");
+  // get_testcase_path(path, "ntt.mem");
+  if (read_ram_in(r, path) == -1) {
+    printf("Error Files not found\n");
+    return;
+  }
+  // print_poly(r); same poly is loaded (verified)
+
+  // ntt(r->coeffs); // this is wrong since poly_ntt also apply barrett reduce
+  poly_invntt_tomont(r);
+
+  compare_poly_modq(r, r_verilog);
+
+  free(r);
+  free(r_verilog);
+}
 /*int16_t montgomery_reduce(int32_t a)
 {
   int32_t t;
@@ -34,32 +93,26 @@ void test_fqmul(void) {
   */
 }
 
-void test_clt(void) {
-  int16_t a = 4505, b = 556;
+void test_butterfly(void) {
+
+  // -------- NTT (Cooley-Tukey) --------
+  int16_t a = 3328, b = 556;
   int16_t zeta = 2226;
-  int16_t r = fqmul(zeta, b);
-  printf("r = %" PRId16 "\n", r);
-  printf("out0 = %" PRId16 ", out1 = %" PRId16 "\n", mod_q(a + r),
-         mod_q(a - r));
-}
 
-// TODO now the compute step give correct output, next check safe
-void test_ntt() {
-  poly *r = malloc(sizeof(poly));
-  poly *r_verilog = malloc(sizeof(poly));
+  int16_t t = fqmul(zeta, b);
+  int16_t out0 = a + t;
+  int16_t out1 = a - t;
 
-  char path[256];
-  get_test_result_path(path, "ntt.hex");
-  read_ram_out(r_verilog, path);
+  printf("NTT   out0 = %" PRId16 ", out1 = %" PRId16 "\n", mod_q(out0),
+         mod_q(out1));
 
-  get_testcase_path(path, "ntt.mem");
-  read_ram_in(r, path);
-  //print_poly(r); same poly is loaded (verified)
+  // -------- INV NTT (Gentleman-Sande) --------
+  a = 3328;
+  b = 556;
 
-  ntt(r->coeffs);
+  int16_t u = a + b;
+  int16_t v = a - b;
+  t = fqmul(zeta, v);
 
-  compare_poly(r, r_verilog);
-
-  free(r);
-  free(r_verilog);
+  printf("INV   out0 = %" PRId16 ", out1 = %" PRId16 "\n", mod_q(u), mod_q(t));
 }

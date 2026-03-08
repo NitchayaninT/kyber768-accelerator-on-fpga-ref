@@ -247,6 +247,7 @@ void poly_ntt(poly *r) {
  * Arguments:   - uint16_t *a: pointer to in/output polynomial
  **************************************************/
 void poly_invntt_tomont(poly *r) { invntt(r->coeffs); }
+
 /*************************************************
  * Name:        poly_basemul_montgomery
  *

@@ -9,5 +9,6 @@
 int16_t montgomery_reduce(int32_t a);
 static int16_t fqmul(int16_t a, int16_t b);
 void test_fqmul();
-void test_clt();
+void test_butterfly();
 void test_ntt();
+void test_inv_ntt();
