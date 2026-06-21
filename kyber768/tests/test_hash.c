@@ -1,96 +1,89 @@
 #include "test_hash.h"
+#include "fips202.h"
+#include "params.h"
 #include <string.h>
 
-/* ------------------------------------------------------------------ *
- * Helpers shared by test_sponge_controller                             *
- * ------------------------------------------------------------------ */
-
-/* Print n bytes MSB-first: matches Verilog $display("%h", bus[n*8-1:0]).
-   bus[7:0] = b[0] (LSByte), so %h shows b[n-1]...b[0]. */
-static void print_verilog_h(const char *label, const uint8_t *b, int n)
+/* Print n bytes as hex (byte 0 first — matches Verilog print_bytes task) */
+static void print_hex(const uint8_t *buf, size_t n)
 {
-    printf("  %-22s = ", label);
-    for (int i = n - 1; i >= 0; i--)
-        printf("%02x", b[i]);
+    for (size_t i = 0; i < n; i++) printf("%02x", buf[i]);
     printf("\n");
 }
 
-/* Build one pre-padded sponge block for the sponge_controller block_in port.
- * Applies Keccak multi-rate padding:
- *   b[0..mlen-1] = msg bytes
- *   b[mlen]      = domain  (XOR'd in; if mlen==rate-1 this byte is also OR'd with 0x80)
- *   b[rate-1]   |= 0x80    (multi-rate padding MSB)
- * buf must be exactly rate bytes; callers are responsible for zeroing it first. */
-static void build_padded_block(uint8_t *buf, int rate,
-                               const uint8_t *msg, size_t mlen,
-                               uint8_t domain)
-{
-    memset(buf, 0, (size_t)rate);
-    if (msg && mlen)
-        memcpy(buf, msg, mlen);
-    buf[mlen]     = domain;
-    buf[rate - 1] |= 0x80;
-}
+// testing sponge_controller.sv
+// test case 1 : SHA3-256 all zeros
+// test case 2 : SHA3-512 all zeros
+// test case 3 : SHAKE-128 all zeros
+// test case 4 : SHAKE-256 all zeros
 
-/* Print 25-lane Keccak state as 1600 bits in two formats:
-   (1) per-lane uint64 (little-endian within each lane)
-   (2) flat byte stream s[0][0..7] ... s[24][0..7] matching the Verilog
-       state bus where bits[63:0] = s[0], bits[127:64] = s[1], etc. */
-static void print_keccak_state(const char *label, const uint64_t s[25])
-{
-    printf("%s:\n", label);
-    for (int i = 0; i < 25; i++)
-        printf("  s[%2d] = %016" PRIx64 "\n", i, s[i]);
+// test case 5 : SHA3-256(PK)
+// test case 6 : SHA3-256(ct)
+// test case 7 : MATRIX GEN seed = all zeroes
+void test_sponge_controller(){
+  printf("=== test sponge_controller ===\n");
+  printf("Input: 32 zero bytes (KYBER_SYMBYTES)\n\n");
 
-    /* Flat 200-byte little-endian stream (s[0] LSB first) matching Verilog
-       state bus: in[63:0]=s[0], in[127:64]=s[1], ..., in[1599:1536]=s[24] */
-    printf("  flat hex (200 bytes, s[0..24] LE): ");
-    for (int i = 0; i < 25; i++)
-        for (int b = 0; b < 8; b++)
-            printf("%02x", (uint8_t)(s[i] >> (8 * b)));
-    printf("\n");
-}
+  uint8_t msg_in[KYBER_SYMBYTES];  // 32 zero bytes
+  memset(msg_in, 0, sizeof(msg_in));
 
-/*
- * test_permutation
- *
- * Verifies the Keccak-f[1600] permutation via the SHAKE128 absorb/squeeze API.
- * Chosen input: 34 zero bytes (32-byte all-zero seed + nonce bytes 0, 0),
- * matching what SHAKE128 absorbs for matrix entry A^T[0][0] with zero seed.
- *
- * Prints:
- *   - the 1600-bit sponge state BEFORE the first permutation (after absorb)
- *   - the 1600-bit sponge state AFTER  the first permutation (after squeeze)
- *   - the first 168-byte output block (SHAKE128 rate block 0)
- *
- * "Before" state  = exact 1600-bit input  to permutation.sv
- * "After"  state  = exact 1600-bit output of permutation.sv
- */
-void test_permutation()
-{
-    printf("=== test_permutation ===\n");
-    printf("Input: 34 zero bytes (seed=0x00*32, i=0, j=0)\n\n");
+  uint8_t out_32[32];                    // SHA3-256 output
+  uint8_t out_64[64];                    // SHA3-512 output
+  uint8_t out_shake[SHAKE128_RATE];      // 1 SHAKE squeeze block (168 bytes)
+  uint8_t out_matrix[4 * SHAKE128_RATE]; // 4 SHAKE128 squeeze blocks for matrix gen
 
-    uint8_t msg[KYBER_SYMBYTES + 2];
-    memset(msg, 0, sizeof(msg));
+  // Test 1: SHA3-256(32 zero bytes)
+  printf("--- Test 1: SHA3-256(32 zero bytes) ---\n");
+  sha3_256(out_32, msg_in, sizeof(msg_in));
+  printf("out: "); print_hex(out_32, 32);
+  printf("\n");
 
-    keccak_state state;
-    shake128_absorb(&state, msg, sizeof(msg));
+  // Test 2: SHA3-512(32 zero bytes)
+  printf("--- Test 2: SHA3-512(32 zero bytes) ---\n");
+  sha3_512(out_64, msg_in, sizeof(msg_in));
+  printf("out: "); print_hex(out_64, 64);
+  printf("\n");
 
-    print_keccak_state("State BEFORE first permutation  [input  to permutation.sv]", state.s);
-    printf("\n");
+  // Test 3: SHAKE128(32 zero bytes) — 1 squeeze block (168 bytes)
+  printf("--- Test 3: SHAKE128(32 zero bytes, 1 block = %d bytes) ---\n", SHAKE128_RATE);
+  shake128(out_shake, SHAKE128_RATE, msg_in, sizeof(msg_in));
+  printf("out: "); print_hex(out_shake, SHAKE128_RATE);
+  printf("\n");
 
-    uint8_t out[SHAKE128_RATE];
-    shake128_squeezeblocks(out, 1, &state);
+  // Test 4: SHAKE256(32 zero bytes) — 1 squeeze block (136 bytes)
+  printf("--- Test 4: SHAKE256(32 zero bytes, 1 block = %d bytes) ---\n", SHAKE256_RATE);
+  shake256(out_shake, SHAKE256_RATE, msg_in, sizeof(msg_in));
+  printf("out: "); print_hex(out_shake, SHAKE256_RATE);
+  printf("\n");
 
-    print_keccak_state("State AFTER  first permutation  [output of permutation.sv]", state.s);
-    printf("\n");
+  // Test 5: SHA3-256(zero PK)
+  printf("--- Test 5: SHA3-256(zero PK = %d bytes) ---\n", KYBER_PUBLICKEYBYTES);
+  uint8_t pk[KYBER_PUBLICKEYBYTES];
+  memset(pk, 0, sizeof(pk));
+  sha3_256(out_32, pk, KYBER_PUBLICKEYBYTES);
+  printf("out: "); print_hex(out_32, 32);
+  printf("\n");
 
-    printf("Rate block 0 (%d bytes) [first %d bytes of SHAKE128 output]:\n  ",
-           SHAKE128_RATE, SHAKE128_RATE);
-    for (int i = 0; i < SHAKE128_RATE; i++)
-        printf("%02x", out[i]);
-    printf("\n");
+  // Test 6: SHA3-256(zero ct)
+  printf("--- Test 6: SHA3-256(zero ct = %d bytes) ---\n", KYBER_CIPHERTEXTBYTES);
+  uint8_t ct[KYBER_CIPHERTEXTBYTES];
+  memset(ct, 0, sizeof(ct));
+  sha3_256(out_32, ct, KYBER_CIPHERTEXTBYTES);
+  printf("out: "); print_hex(out_32, 32);
+  printf("\n");
+
+  // Test 7: SHAKE128 matrix gen — seed=all zeros, i=0, j=0 → 3 squeeze blocks
+  // kyber_shake128_absorb absorbs seed||i||j (34 bytes), matching sponge_controller matrix_gen=1
+  printf("--- Test 7: SHAKE128 matrix gen (seed=0, i=0, j=0) ---\n");
+  keccak_state xof_st;
+  uint8_t seed[KYBER_SYMBYTES];
+  memset(seed, 0, sizeof(seed));
+  kyber_shake128_absorb(&xof_st, seed, 0, 0);
+  shake128_squeezeblocks(out_matrix, 4, &xof_st);
+  for (int b = 0; b < 4; b++) {
+    printf("squeeze[%d]: ", b);
+    print_hex(out_matrix + b * SHAKE128_RATE, SHAKE128_RATE);
+  }
+  printf("\n");
 }
 
 /* ------------------------------------------------------------------ *

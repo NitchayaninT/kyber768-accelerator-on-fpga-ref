@@ -26,8 +26,10 @@ int main(void) {
   // test_butterfly();         // verified 27-02-2026
 
   //test_ntt();
-  test_main_compute();
+  //test_main_compute();
   // test_inv_ntt();
-
+  
+  test_sponge_controller();
+ // test_hash_controller();
   return 0;
 }

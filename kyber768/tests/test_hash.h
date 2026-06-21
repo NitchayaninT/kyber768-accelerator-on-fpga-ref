@@ -8,6 +8,7 @@
 #include "symmetric.h"
 
 void test_permutation();
-void test_sponge_controller(void);
+void test_hash_controller();
+void test_sponge_controller();
 
 #endif
