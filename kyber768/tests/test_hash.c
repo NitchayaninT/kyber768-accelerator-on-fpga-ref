@@ -19,6 +19,45 @@ static void print_hex(const uint8_t *buf, size_t n)
 // test case 5 : SHA3-256(PK)
 // test case 6 : SHA3-256(ct)
 // test case 7 : MATRIX GEN seed = all zeroes
+/* Tests matching hash_controller_tb.sv exactly:
+ * Test 1: SHA3-256(empty)   Test 2: SHA3-256("abc")
+ * Test 3: SHAKE128(empty)   Test 4: SHAKE128 matrix_gen (34B zero seed) */
+void test_hash_controller() {
+    printf("=== test_hash_controller ===\n\n");
+
+    uint8_t out[4 * SHAKE128_RATE];
+
+    // Test 1: SHA3-256(empty = 0 bytes)
+    printf("=== Test 1: SHA3-256 empty string ===\n");
+    sha3_256(out, NULL, 0);
+    printf("got:      "); print_hex(out, 32);
+    printf("expected: a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a\n\n");
+
+    // Test 2: SHA3-256("abc")
+    printf("=== Test 2: SHA3-256 'abc' (3 bytes) ===\n");
+    uint8_t abc[3] = {0x61, 0x62, 0x63};
+    sha3_256(out, abc, 3);
+    printf("got:      "); print_hex(out, 32);
+    printf("expected: 3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532\n\n");
+
+    // Test 3: SHAKE128(empty = 0 bytes), 168 bytes output, first 32 printed
+    printf("=== Test 3: SHAKE128 empty string (no matrix_gen) ===\n");
+    shake128(out, SHAKE128_RATE, NULL, 0);
+    printf("got:      "); print_hex(out, 32);
+    printf("expected: 7f9c2ba4e88f827d616045507605853ed73b8093f6efbc88eb1a6eacfa66ef26\n\n");
+
+    // Test 4: SHAKE128 matrix_gen — 34 zero bytes, 4 squeeze blocks
+    printf("=== Test 4: SHAKE128 matrix_gen (34B zero seed, 4 squeezes) ===\n");
+    uint8_t seed34[34];
+    memset(seed34, 0, sizeof(seed34));
+    keccak_state st;
+    shake128_absorb(&st, seed34, 34);
+    shake128_squeezeblocks(out, 4, &st);
+    printf("squeeze0: "); print_hex(out, 32);
+    printf("squeeze1: "); print_hex(out + SHAKE128_RATE, 32);
+    printf("\n");
+}
+
 void test_sponge_controller(){
   printf("=== test sponge_controller ===\n");
   printf("Input: 32 zero bytes (KYBER_SYMBYTES)\n\n");
@@ -84,172 +123,4 @@ void test_sponge_controller(){
     print_hex(out_matrix + b * SHAKE128_RATE, SHAKE128_RATE);
   }
   printf("\n");
-}
-
-/* ------------------------------------------------------------------ *
- * test_sponge_controller                                               *
- *                                                                      *
- * Reference vectors for sponge_controller.sv's block-at-a-time        *
- * interface.  For each test case, prints the pre-padded block_in and   *
- * the squeezed block_out in "Verilog %h bus order" so the values can   *
- * be pasted directly into sponge_controller_tb.sv or compared with     *
- * $display output.                                                      *
- *                                                                      *
- * Verilog %h bus order = MSB byte first.  For a [N*8-1:0] bus where   *
- * bus[7:0] = byte 0, $display("%h", bus) prints byte N-1 first.        *
- *                                                                      *
- * All four hash modes are covered:                                     *
- *   mode 00 = SHA3-256  (rate=136 B, domain=0x06)                     *
- *   mode 01 = SHA3-512  (rate= 72 B, domain=0x06)                     *
- *   mode 10 = SHAKE128  (rate=168 B, domain=0x1F)                     *
- *   mode 11 = SHAKE256  (rate=136 B, domain=0x1F)                     *
- * ------------------------------------------------------------------ */
-void test_sponge_controller(void)
-{
-    printf("=== test_sponge_controller ===\n\n");
-
-    /* --------------------------------------------------------------- *
-     * Test 1: SHA3-256, empty input (mode=00)                          *
-     * Single block, last_block=1.                                       *
-     * Matches sponge_controller_tb Test 1.                             *
-     * --------------------------------------------------------------- */
-    {
-        uint8_t block_in[SHA3_256_RATE];
-        uint8_t hash[32];
-
-        printf("-- Test 1: SHA3-256 empty string (mode=00) --\n");
-        printf("  hash_mode=2'b00  rate=%d B  domain=0x06  last_block=1\n",
-               SHA3_256_RATE);
-
-        build_padded_block(block_in, SHA3_256_RATE, NULL, 0, 0x06);
-        print_verilog_h("block_in[1087:0]", block_in, SHA3_256_RATE);
-
-        sha3_256(hash, NULL, 0);
-        print_verilog_h("block_out[255:0]", hash, 32);
-        printf("  standard hash    = ");
-        for (int i = 0; i < 32; i++) printf("%02x", hash[i]);
-        printf("\n\n");
-    }
-
-    /* --------------------------------------------------------------- *
-     * Test 2: SHA3-512, empty input (mode=01)                          *
-     * Single block, last_block=1.                                       *
-     * --------------------------------------------------------------- */
-    {
-        uint8_t block_in[SHA3_512_RATE];
-        uint8_t hash[64];
-
-        printf("-- Test 2: SHA3-512 empty string (mode=01) --\n");
-        printf("  hash_mode=2'b01  rate=%d B  domain=0x06  last_block=1\n",
-               SHA3_512_RATE);
-
-        build_padded_block(block_in, SHA3_512_RATE, NULL, 0, 0x06);
-        print_verilog_h("block_in[575:0]", block_in, SHA3_512_RATE);
-
-        sha3_512(hash, NULL, 0);
-        print_verilog_h("block_out[511:0]", hash, 64);
-        printf("  standard hash    = ");
-        for (int i = 0; i < 64; i++) printf("%02x", hash[i]);
-        printf("\n\n");
-    }
-
-    /* --------------------------------------------------------------- *
-     * Test 3: SHAKE128, 34 zero bytes, matrix_gen=1 (mode=10)          *
-     * 3 squeeze rounds (matrix generation for A^T[0][0] with           *
-     * seed=zeros, matching sponge_controller_tb Test 2 and the         *
-     * existing test_permutation input).                                 *
-     * --------------------------------------------------------------- */
-    {
-        uint8_t msg[KYBER_SYMBYTES + 2]; /* 32 + 2 = 34 bytes */
-        uint8_t block_in[SHAKE128_RATE];
-        uint8_t out[SHAKE128_RATE];
-        keccak_state state;
-
-        memset(msg, 0, sizeof(msg));
-
-        printf("-- Test 3: SHAKE128 34-byte zero input, matrix_gen=1 (mode=10) --\n");
-        printf("  hash_mode=2'b10  rate=%d B  domain=0x1F"
-               "  last_block=1  matrix_gen=1\n", SHAKE128_RATE);
-
-        build_padded_block(block_in, SHAKE128_RATE, msg, sizeof(msg), 0x1F);
-        print_verilog_h("block_in[1343:0]", block_in, SHAKE128_RATE);
-        printf("\n");
-
-        shake128_absorb(&state, msg, sizeof(msg));
-        for (int sq = 0; sq < 3; sq++) {
-            shake128_squeezeblocks(out, 1, &state);
-            printf("  squeeze %d:\n", sq + 1);
-            /* block_out[255:0] matches what sponge_controller_tb prints */
-            print_verilog_h("block_out[255:0]", out, 32);
-            /* Full rate block for complete hardware comparison */
-            print_verilog_h("block_out[1343:0]", out, SHAKE128_RATE);
-        }
-        printf("\n");
-    }
-
-    /* --------------------------------------------------------------- *
-     * Test 4: SHAKE256, 32 zero bytes (mode=11)                        *
-     * Single squeeze, last_block=1.                                     *
-     * Models noise/coins generation in pre_encryption.sv.              *
-     * --------------------------------------------------------------- */
-    {
-        uint8_t msg[KYBER_SYMBYTES]; /* 32 bytes */
-        uint8_t block_in[SHAKE256_RATE];
-        uint8_t out[SHAKE256_RATE];
-        keccak_state state;
-
-        memset(msg, 0, sizeof(msg));
-
-        printf("-- Test 4: SHAKE256 32-byte zero input (mode=11) --\n");
-        printf("  hash_mode=2'b11  rate=%d B  domain=0x1F  last_block=1\n",
-               SHAKE256_RATE);
-
-        build_padded_block(block_in, SHAKE256_RATE, msg, sizeof(msg), 0x1F);
-        print_verilog_h("block_in[1087:0]", block_in, SHAKE256_RATE);
-
-        shake256_absorb(&state, msg, sizeof(msg));
-        shake256_squeezeblocks(out, 1, &state);
-        print_verilog_h("block_out[1087:0]", out, SHAKE256_RATE);
-        printf("  standard out     = ");
-        for (int i = 0; i < SHAKE256_RATE; i++) printf("%02x", out[i]);
-        printf("\n\n");
-    }
-
-    /* --------------------------------------------------------------- *
-     * Test 5: SHA3-256, 1184-byte zero PK (mode=00, 9 blocks)          *
-     * Multi-block absorb: 8 full 136-byte blocks + 1 padded block.     *
-     * Models the PK hash (SHA3-256(public_key)) in pre_encryption.sv.  *
-     *   blocks 1–8: 136 zero bytes (full blocks, no padding)           *
-     *   block  9  : 96 payload bytes + padding (last_block=1)          *
-     * --------------------------------------------------------------- */
-    {
-        const int pk_len       = 1184;
-        const int n_full       = pk_len / SHA3_256_RATE;           /* 8  */
-        const int last_payload = pk_len - n_full * SHA3_256_RATE;  /* 96 */
-        uint8_t pk[1184];
-        uint8_t full_block[SHA3_256_RATE];
-        uint8_t block9[SHA3_256_RATE];
-        uint8_t hash[32];
-
-        memset(pk, 0, sizeof(pk));
-        memset(full_block, 0, sizeof(full_block));
-
-        printf("-- Test 5: SHA3-256 1184-byte zero PK (mode=00, 9 blocks) --\n");
-        printf("  hash_mode=2'b00  rate=%d B  domain=0x06\n", SHA3_256_RATE);
-        printf("  blocks 1..%d: %d-byte all-zero full blocks (no padding)\n",
-               n_full, SHA3_256_RATE);
-        print_verilog_h("full_blk[1087:0]", full_block, SHA3_256_RATE);
-
-        printf("  block 9 (last_block=1, %d payload bytes):\n", last_payload);
-        build_padded_block(block9, SHA3_256_RATE,
-                           pk + n_full * SHA3_256_RATE,
-                           (size_t)last_payload, 0x06);
-        print_verilog_h("block9_in[1087:0]", block9, SHA3_256_RATE);
-
-        sha3_256(hash, pk, (size_t)pk_len);
-        print_verilog_h("block_out[255:0]", hash, 32);
-        printf("  standard hash    = ");
-        for (int i = 0; i < 32; i++) printf("%02x", hash[i]);
-        printf("\n\n");
-    }
 }

@@ -237,13 +237,7 @@ void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
         buflen = off + XOF_BLOCKBYTES;
         ctr += rej_uniform(a[i].vec[j].coeffs + ctr, KYBER_N - ctr, buf, buflen);
       }
-        // ✅ print after finished squeezing for this (i,j)
-      printf("\n=== FINAL SHAKE STREAM USED (i=%u, j=%u, transposed=%d) ===\n", i, j, transposed);
-      print_hex("fullbuf", fullbuf, full_len);
-      
-      char tag[64];
-      snprintf(tag, sizeof(tag), "Poly a[%u][%u] (i=%u,j=%u):", i, j, i, j);
-      print_poly(tag, &a[i].vec[j]);
+      /* debug prints removed */
 
     }
   }

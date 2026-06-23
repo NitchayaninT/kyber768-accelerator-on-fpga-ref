@@ -2,6 +2,7 @@
 #include "test_maincompute.h"
 #include "test_mul.h"
 #include "test_ntt.h"
+#include "test_encryption.h"
 #include <inttypes.h>
 
 #define MONT 2285  // 2^16 mod q
@@ -29,7 +30,9 @@ int main(void) {
   //test_main_compute();
   // test_inv_ntt();
   
-  test_sponge_controller();
- // test_hash_controller();
+  // test_hash_controller();
+  // test_sponge_controller();
+  test_encryption_verify();
+  test_encryption_timing();
   return 0;
 }
